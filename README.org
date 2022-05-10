@@ -6,36 +6,64 @@
 
 * TODO add readme
 
-* Example makefile
+* Examples
+
+** Simple C project
 
 #+begin_src makefile
-CC := g++			# Makemake input
+CC := gcc			# Makemake input
 PROJECT := myproject
 
-all: exe			# Default target
-
-exe: $(PROJECT)			# Target for binary
-
-lib: lib$(PROJECT)		# Target for library
-
-asm: asm_$(PROJECT)		# Target for assembly files
-
-.PHONY: all exe lib
+all: $(PROJECT)			# Default executable target
+.PHONY: all
 
 include Makemake
 
 $(eval $(reset_build))		# Not needed but good habit
 # Build inputs
 NAME := $(PROJECT)
-VARIANT := rel			# Release variant
+SRC_DIR := src
+SRC_EXT := c
+CFLAGS := -O2
+$(eval $(make_build))
+#+end_src
+
+** More complex case
+
+#+begin_src makefile
+CC := g++			# Makemake input
+PROJECT := myproject
+
+all: exe			# Default target
+.PHONY: all
+
+# Syntactic sugars for exposed targets for specified build
+
+# Default build
+exe: $(PROJECT)			# Target for binary
+lib: lib$(PROJECT)		# Target for library
+asm: asm_$(PROJECT)		# Target for assembly files
+
+# dbg variant build
+exe_dbg: $(PROJECT)_dbg
+lib_dbg: lib$(PROJECT)_dbg
+asm_dbg: asm_$(PROJECT)_dbg
+
+.PHONY: exe lib asm exe_dbg lib_dbg asm_dbg
+
+include Makemake
+
+$(eval $(reset_build))		# Not needed but good habit
+# Build inputs
+NAME := $(PROJECT)
 SRC_DIR := src
 SRC_EXT := cpp
 INCLUDE_DIR := lib
-CFLAGS := -O2 -g -DDEBUG -Wall -Wextra -std=c++17
+CFLAGS := -O2 -Wall -Wextra -std=c++17
 LDFLAGS := -pthread
 $(eval $(make_build))
 
 VARIANT := dbg			# Debug variant, notice not resetting the build
-CFLAGS := -O0
+CFLAGS := -g -DDEBUG -Wall -Wextra -std=c++17
 $(eval $(make_build))
 #+end_src
