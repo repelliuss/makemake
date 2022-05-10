@@ -1,7 +1,7 @@
-#+html: <figure> <img src="https://github.com/repelliuss/.github/blob/8e8409ac0b63485285358871faa3745a1d5da948/makemake/Makemake_and_its_moon.jpg" align="right" width="33%"> <figcaption>Makemake dwarf planet - ESA/Hubble</figcaption></figure>
+#+html: <img src="https://github.com/repelliuss/.github/blob/8e8409ac0b63485285358871faa3745a1d5da948/makemake/Makemake_and_its_moon.jpg" align="right" width="20%">
 
 #+begin_quote
-/Makemake save us!/
+/Makemake save us!/ Makemake and its moon - ESA/Hubble
 #+end_quote
 
 * TODO add readme
