@@ -1,0 +1,141 @@
+MAKEFILE_LIST := $(filter-out $(lastword $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
+
+# You must define these variables
+# CC :=
+
+# You may want to override these variables!
+MKDIR-P ?= mkdir -p
+RM-R ?= rm -r
+PRINTF ?= printf
+ECHO ?= echo
+
+OBJ_DIR ?= .obj
+DEP_DIR ?= .dep
+
+# Is there a better way?
+ifneq ($(findstring s,$(MAKEFLAGS)),)
+PRINTF += > /dev/null
+ECHO += > /dev/null
+endif
+
+define reset_build =
+NAME :=
+VARIANT :=
+SRC_DIR :=
+SRC_SUBDIRS :=
+SRC_EXT :=
+SRC_EXTRA :=
+INCLUDE_DIR :=
+PARENT_OBJS_DIR :=
+PARENT_DEPS_DIR :=
+CFLAGS :=
+LDFLAGS :=
+CATEGORY :=
+endef
+
+define make_build =
+$$(eval $$(call build_template,$(NAME),$(if $(patsubst _,,_$(VARIANT)),_$(VARIANT)),$(if $(patsubst /,,/$(VARIANT)),/$(VARIANT)),$(SRC_DIR),$(SRC_SUBDIRS),$(INCLUDE_DIR),$(PARENT_OBJS_DIR),$(PARENT_DEPS_DIR),$(CFLAGS),$(LDFLAGS),$(CATEGORY),$(SRC_EXT),$(SRC_EXTRA)))
+endef
+
+# $(1): library name
+# $(2): variant suffix
+# $(3): variant path
+# $(4): top level source directory
+# $(5): sub level source directories
+# $(6): include directory
+# $(7): objects' parent directory
+# $(8): deps' parent directory
+# $(9): CFLAGS
+# $(10): LDFLAGS
+# $(11): category
+# $(12): source file extension
+# $(13): extra source files
+define build_template =
+BUILD_DIR_$(1) := $$(patsubst %/,%,$$(dir $$(abspath $$(lastword $$(MAKEFILE_LIST)))))
+
+ifeq ($(6),)
+INCLUDES_$(1) := -I$$(BUILD_DIR_$(1))
+else
+INCLUDES_$(1) := -I$(6)
+endif
+
+ifeq ($(4),)
+SRC_DIR_$(1) := $$(BUILD_DIR_$(1))
+else
+SRC_DIR_$(1) := $(4)
+endif
+
+SRC_SUB_DIRS_$(1) := $$(addprefix $$(SRC_DIR_$(1))/,$(5))
+
+SRCS_$(1) := $$(foreach src_dir,$$(SRC_DIR_$(1)) $$(SRC_SUB_DIRS_$(1)),$$(wildcard $$(src_dir)/*.$(12))) $(13) # FIXME: adds space to variable
+
+ifeq ($(7),)
+OBJ_DIR_$(1)$(2) := $$(OBJ_DIR)/$(1)$(3)
+else
+OBJ_DIR_$(1)$(2) := $(7)/$(1)$(3)
+endif
+
+ifeq ($(8),)
+DEP_DIR_$(1)$(2) := $$(DEP_DIR)/$(1)$(3)
+else
+DEP_DIR_$(1)$(2) := $(8)/$(1)$(3)
+endif
+
+DEPFLAGS_$(1)$(2) = -MT $$@ -MMD -MP -MF $$(DEP_DIR_$(1)$(2))/$$*.d
+
+DEPFILES_$(1)$(2) := $$(SRCS_$(1):$$(SRC_DIR_$(1))/%.$(12)=$$(DEP_DIR_$(1)$(2))/%.d)
+
+LIB_$(1)$(2) := $$(OBJ_DIR_$(1)$(2))/lib$(1).so
+
+OBJS_$(1)$(2) := $$(SRCS_$(1):$$(SRC_DIR_$(1))/%.$(12)=$$(OBJ_DIR_$(1)$(2))/%.o)
+
+# TODO: should point to ASM_DIR not OBJ_DIR
+ASMS_$(1)$(2) := $$(SRCS_$(1):$$(SRC_DIR_$(1))/%.$(12)=$$(OBJ_DIR_$(1)$(2))/%.s)
+
+ALL_OBJS_DIRS_$(1)$(2) := $$(OBJ_DIR_$(1)$(2)) $$(patsubst $(4)/%,$$(OBJ_DIR_$(1)$(2))/%,$$(SRC_SUB_DIRS_$(1)))
+ALL_DEPS_DIRS_$(1)$(2) := $$(DEP_DIR_$(1)$(2)) $$(patsubst $(4)/%,$$(DEP_DIR_$(1)$(2))/%,$$(SRC_SUB_DIRS_$(1)))
+
+$(1)$(2): $$(OBJS_$(1)$(2))
+	@$$(PRINTF) "LNK\t$(11)$$(notdir $$@)\n"
+	@$$(CC) -o $$@ $$^ $(10)
+
+lib$(1)$(2): $$(LIB_$(1)$(2))
+.PHONY: lib$(1)$(2)
+
+asm_$(1)$(2): $$(ASMS_$(1)$(2))
+
+$$(LIB_$(1)$(2)): $$(OBJS_$(1)$(2)) | $$(OBJ_DIR_$(1)$(2))
+	@$$(PRINTF) "LNK\t$(11)$$(notdir $$@)\n"
+	@$$(CC) -shared -o $$@ $$^
+
+$$(OBJ_DIR_$(1)$(2))/%.o: $$(SRC_DIR_$(1))/%.$(12) | $$(OBJ_DIR_$(1)$(2)) $$(DEP_DIR_$(1)$(2))
+	@$$(PRINTF) "CC\t$(11)$$(notdir $$@)\n"
+	@$$(CC) -o $$@ -c $$< $$(INCLUDES_$(1)) $(9) $$(DEPFLAGS_$(1)$(2))
+
+$$(OBJ_DIR_$(1)$(2))/%.s: $$(SRC_DIR_$(1))/%.$(12) | $$(OBJ_DIR_$(1)$(2)) $$(DEP_DIR_$(1)$(2))
+	@$$(PRINTF) "CC -S \t$(11)$$(notdir $$@)\n"
+	@$$(CC) -o $$@ -S $$< $$(INCLUDES_$(1)) $(9) $$(DEPFLAGS_$(1)$(2))
+
+$$(OBJ_DIR_$(1)$(2)):
+	@$$(MKDIR-P) $$(ALL_OBJS_DIRS_$(1)$(2))
+
+$$(DEP_DIR_$(1)$(2)):
+	@$$(MKDIR-P) $$(ALL_DEPS_DIRS_$(1)$(2))
+
+$$(DEPFILES_$(1)$(2)):
+-include $$(wildcard $$(DEPFILES_$(1)$(2)))
+
+clean_$(1)$(2)::
+	@-$$(RM-R) $$(OBJ_DIR_$(1)$(2)) $$(DEP_DIR_$(1)$(2)) $(1)$(2) 2>/dev/null ||:
+.PHONY: clean_$(1)$(2)
+
+clean::
+	@-$$(RM-R) $(1)$(2) 2>/dev/null ||:
+
+endef
+
+clean::
+	@-$(RM-R) $(OBJ_DIR) $(DEP_DIR) 2>/dev/null ||:
+.PHONY: clean
+
+print-% : ; $(info $* is a $(flavor $*) variable set to [$($*)]) @true

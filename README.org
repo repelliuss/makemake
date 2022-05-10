@@ -1,0 +1,23 @@
+* TODO add readme
+
+* Example makefile
+
+#+begin_src makefile
+CC := g++				# Makemake input
+PROJECT := myproject
+
+all: $(PROJECT)			# Default target
+.PHONY: all
+
+include Makemake
+
+$(eval $(reset_build))		# Not needed but good habit
+# Build inputs
+NAME := $(PROJECT)
+SRC_DIR := src
+SRC_EXT := cpp
+INCLUDE_DIR := lib
+CFLAGS := -O2 -g -DDEBUG -Wall -Wextra -std=c++17
+LDFLAGS := -pthread
+$(eval $(make_build))
+#+end_src
