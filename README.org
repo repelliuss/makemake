@@ -3,7 +3,7 @@
 * Example makefile
 
 #+begin_src makefile
-CC := g++				# Makemake input
+CC := g++			# Makemake input
 PROJECT := myproject
 
 all: $(PROJECT)			# Default target
